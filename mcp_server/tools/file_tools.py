@@ -1,10 +1,60 @@
 """File operation tools for MCP server"""
 
 from pathlib import Path
-from typing import Dict, Any
 import logging
 
 logger = logging.getLogger(__name__)
+
+# Tool metadata for automatic registration
+TOOLS = [
+    {
+        'name': 'file_read',
+        'description': 'Read contents of a file',
+        'parameters': {
+            'type': 'object',
+            'properties': {
+                'path': {
+                    'type': 'string',
+                    'description': 'Path to the file to read'
+                }
+            },
+            'required': ['path']
+        }
+    },
+    {
+        'name': 'file_write',
+        'description': 'Write content to a file',
+        'parameters': {
+            'type': 'object',
+            'properties': {
+                'path': {
+                    'type': 'string',
+                    'description': 'Path to the file to write'
+                },
+                'content': {
+                    'type': 'string',
+                    'description': 'Content to write to the file'
+                }
+            },
+            'required': ['path', 'content']
+        }
+    },
+    {
+        'name': 'list_directory',
+        'description': 'List contents of a directory',
+        'parameters': {
+            'type': 'object',
+            'properties': {
+                'path': {
+                    'type': 'string',
+                    'description': 'Path to the directory'
+                }
+            },
+            'required': ['path']
+        }
+    }
+]
+
 
 def file_read(path: str) -> str:
     """Read contents of a file"""
