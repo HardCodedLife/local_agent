@@ -4,7 +4,6 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-# Add parent directory to path
 sys.path.append(str(Path(__file__).parent.parent))
 
 import typer
@@ -13,9 +12,8 @@ from rich.table import Table
 from rich.panel import Panel
 
 from agent_controller.agent import LocalAgent
-from shared.config import DEFAULT_MODEL, CODER_MODEL
+from shared.config import ORCHESTRATOR_MODEL, CODER_MODEL
 
-# Rest of your CLI code stays the same...
 console = Console()
 app = typer.Typer(
     name="agent",
@@ -30,7 +28,7 @@ def get_agent() -> LocalAgent:
     global _agent_instance
     if _agent_instance is None:
         _agent_instance = LocalAgent(
-            default_model=DEFAULT_MODEL,
+            orchestrator_model=ORCHESTRATOR_MODEL,
             coder_model=CODER_MODEL
         )
     return _agent_instance
@@ -38,15 +36,17 @@ def get_agent() -> LocalAgent:
 
 @app.command()
 def chat(
-    message: str = typer.Argument(..., help="Message to send to the agent"),
-    model: Optional[str] = typer.Option(None, "--model", "-m", help="Override model selection")
+    message: str = typer.Argument(..., help="Message to send to the agent")
 ):
     """Send a single message to the agent"""
-    agent = LocalAgent(default_model=DEFAULT_MODEL, coder_model=CODER_MODEL)
+    agent = LocalAgent(
+        orchestrator_model=ORCHESTRATOR_MODEL,
+        coder_model=CODER_MODEL
+    )
     
     try:
         with console.status("[bold green]Agent is thinking..."):
-            response = agent.chat(message, model_override=model)
+            response = agent.chat(message)
         
         console.print(Panel(response, title="🤖 Agent Response", border_style="green"))
     
@@ -62,12 +62,14 @@ def interactive():
     
     console.print(Panel.fit(
         "[bold cyan]🤖 Local Agent - Interactive Mode[/bold cyan]\n\n"
+        f"Orchestrator: [yellow]{ORCHESTRATOR_MODEL}[/yellow]\n"
+        f"Coder: [yellow]{CODER_MODEL}[/yellow]\n\n"
         "Commands:\n"
         "  • [yellow]exit/quit[/yellow] - Exit the program\n"
         "  • [yellow]reset[/yellow] - Clear conversation history\n"
         "  • [yellow]history[/yellow] - Show conversation\n"
         "  • [yellow]info[/yellow] - Show agent information\n\n"
-        "Tools: file_read, file_write, list_directory",
+        "The orchestrator handles requests and delegates coding to the coder model.",
         border_style="cyan"
     ))
     
@@ -170,9 +172,8 @@ def display_info(agent: LocalAgent):
     info_table.add_column("Setting", style="cyan", width=20)
     info_table.add_column("Value", style="green")
     
-    info_table.add_row("Default Model", info['default_model'])
+    info_table.add_row("Orchestrator Model", info['orchestrator_model'])
     info_table.add_row("Coder Model", info['coder_model'])
-    info_table.add_row("Current Model", info['current_model'])
     info_table.add_row("Available Tools", ", ".join(info['available_tools']))
     info_table.add_row("Messages in History", str(info['conversation_length']))
     
