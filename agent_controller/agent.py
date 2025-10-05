@@ -17,6 +17,7 @@ class LocalAgent:
         self.orchestrator_model = orchestrator_model
         self.mcp_client = MCPClient(coder_model=coder_model)
         self.conversation_history: List[Any] = []
+        self.max_iterations = 10  # Prevent infinite loops
         logger.info(f"LocalAgent initialized - Orchestrator: {orchestrator_model}")
     
     def chat(self, user_message: str) -> str:
@@ -38,65 +39,67 @@ class LocalAgent:
         })
         
         try:
-            # Get tools from MCP client (dynamically loaded!)
+            # Get tools from MCP client
             tools = self.mcp_client.get_tool_definitions()
             
-            # Call orchestrator with tools
-            response = ollama.chat(
-                model=self.orchestrator_model,
-                messages=self.conversation_history,
-                tools=tools
-            )
-            
-            assistant_message = response['message']
-            self.conversation_history.append(assistant_message)
-            
-            if assistant_message.get('tool_calls'):
-                logger.info(f"Orchestrator requested {len(assistant_message['tool_calls'])} tool calls")
+            # Multi-step execution loop
+            iteration = 0
+            while iteration < self.max_iterations:
+                iteration += 1
+                logger.info(f"Iteration {iteration}/{self.max_iterations}")
                 
-                # Execute each tool call via MCP client
-                for tool_call in assistant_message['tool_calls']:
-                    function_name = tool_call['function']['name']
-                    function_args = tool_call['function']['arguments']
-                    
-                    # Execute tool via MCP client
-                    tool_result = self.mcp_client.call_tool(function_name, function_args)
-                    
-                    # DEBUG: Log the tool result
-                    logger.info(f"Tool result length: {len(tool_result)} chars")
-                    logger.debug(f"Tool result preview: {tool_result[:200]}...")
-                    
-                    # Add tool result to conversation
-                    self.conversation_history.append({
-                        'role': 'tool',
-                        'content': tool_result
-                    })
-                
-                # DEBUG: Log conversation state before final call
-                logger.info(f"Conversation history has {len(self.conversation_history)} messages")
-                
-                # Get final response from orchestrator
-                final_response = ollama.chat(
+                # Call orchestrator with tools
+                response = ollama.chat(
                     model=self.orchestrator_model,
-                    messages=self.conversation_history
+                    messages=self.conversation_history,
+                    tools=tools
                 )
                 
-                final_message = final_response['message']
-                final_content = final_message.get('content', '')
+                assistant_message = response['message']
+                self.conversation_history.append(assistant_message)
                 
-                # DEBUG: Check if response is empty
-                if not final_content or final_content.strip() == '':
-                    logger.warning("Model returned empty response!")
-                    logger.warning(f"Final message: {final_message}")
-                    return "Error: Model returned empty response. This might be a model capability issue."
+                # Check if model wants to use tools
+                if assistant_message.get('tool_calls'):
+                    logger.info(f"Orchestrator requested {len(assistant_message['tool_calls'])} tool calls")
+                    
+                    # Execute each tool call
+                    for tool_call in assistant_message['tool_calls']:
+                        function_name = tool_call['function']['name']
+                        function_args = tool_call['function']['arguments']
+                        
+                        # Execute tool via MCP client
+                        tool_result = self.mcp_client.call_tool(function_name, function_args)
+                        
+                        logger.info(f"Tool result length: {len(tool_result)} chars")
+                        
+                        # Add tool result to conversation
+                        self.conversation_history.append({
+                            'role': 'tool',
+                            'content': tool_result
+                        })
+                    
+                    # Continue loop - model may want to call more tools
+                    continue
                 
-                self.conversation_history.append(final_message)
-                
-                return final_content
+                else:
+                    # No more tool calls - we have final response
+                    final_content = assistant_message.get('content', '')
+                    
+                    if not final_content or final_content.strip() == '':
+                        logger.warning("Model returned empty response!")
+                        # Check if there's a 'thinking' field
+                        thinking = assistant_message.get('thinking', '')
+                        if thinking:
+                            logger.info(f"Model thinking: {thinking}")
+                            return f"The agent is still processing. Last thought: {thinking}"
+                        return "Error: Model returned empty response after tool execution."
+                    
+                    logger.info(f"Final response generated after {iteration} iterations")
+                    return final_content
             
-            else:
-                # No tool calls, return direct response
-                return assistant_message.get('content', '')
+            # Max iterations reached
+            logger.warning(f"Max iterations ({self.max_iterations}) reached")
+            return "Error: Maximum number of tool execution steps reached. The task may be too complex."
         
         except Exception as e:
             logger.error(f"Error in chat: {e}", exc_info=True)
@@ -123,5 +126,6 @@ class LocalAgent:
             'orchestrator_model': self.orchestrator_model,
             'coder_model': self.mcp_client.coder_model,
             'available_tools': self.mcp_client.list_tools(),
-            'conversation_length': len(self.conversation_history)
+            'conversation_length': len(self.conversation_history),
+            'max_iterations': self.max_iterations
         }
