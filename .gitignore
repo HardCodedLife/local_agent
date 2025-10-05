@@ -69,6 +69,7 @@ Thumbs.db
 desktop.ini
 
 # Project specific
+.env*
 data/
 *.db
 *.log
