@@ -4,8 +4,8 @@
 OLLAMA_BASE_URL = "http://localhost:11434"
 
 # Model configuration
-ORCHESTRATOR_MODEL = "gpt-oss:120b-cloud"  # Main agent that orchestrates everything, "granite4:micro-h", 
-CODER_MODEL = "qwen3-coder:480b-cloud"    # Specialized coding model (delegated to), "deepcoder:1.5b"
+ORCHESTRATOR_MODEL = "gpt-oss:120b-cloud"  #"granite4:micro-h"  # Main agent that orchestrates
+CODER_MODEL = "qwen3-coder:480b-cloud"    #"deepcoder:1.5b" # Specialist for coding tasks
 
 # MCP Server settings
 MCP_SERVER_HOST = "localhost"
