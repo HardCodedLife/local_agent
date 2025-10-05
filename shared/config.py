@@ -2,8 +2,11 @@
 
 # Ollama settings
 OLLAMA_BASE_URL = "http://localhost:11434"
-DEFAULT_MODEL = "granite4:micro-h"
-CODER_MODEL = "deepcoder:1.5b"
+#DEFAULT_MODEL = "granite4:micro-h"
+DEFAULT_MODEL = "gpt-oss:120b-cloud"
+
+#CODER_MODEL = "deepcoder:1.5b"
+CODER_MODEL = "qwen3-coder:480b-cloud"
 
 # MCP Server settings
 MCP_SERVER_HOST = "localhost"
