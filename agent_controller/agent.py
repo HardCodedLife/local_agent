@@ -62,11 +62,18 @@ class LocalAgent:
                     # Execute tool via MCP client
                     tool_result = self.mcp_client.call_tool(function_name, function_args)
                     
+                    # DEBUG: Log the tool result
+                    logger.info(f"Tool result length: {len(tool_result)} chars")
+                    logger.debug(f"Tool result preview: {tool_result[:200]}...")
+                    
                     # Add tool result to conversation
                     self.conversation_history.append({
                         'role': 'tool',
                         'content': tool_result
                     })
+                
+                # DEBUG: Log conversation state before final call
+                logger.info(f"Conversation history has {len(self.conversation_history)} messages")
                 
                 # Get final response from orchestrator
                 final_response = ollama.chat(
@@ -75,15 +82,24 @@ class LocalAgent:
                 )
                 
                 final_message = final_response['message']
+                final_content = final_message.get('content', '')
+                
+                # DEBUG: Check if response is empty
+                if not final_content or final_content.strip() == '':
+                    logger.warning("Model returned empty response!")
+                    logger.warning(f"Final message: {final_message}")
+                    return "Error: Model returned empty response. This might be a model capability issue."
+                
                 self.conversation_history.append(final_message)
                 
-                return final_message['content']
+                return final_content
             
             else:
-                return assistant_message['content']
+                # No tool calls, return direct response
+                return assistant_message.get('content', '')
         
         except Exception as e:
-            logger.error(f"Error in chat: {e}")
+            logger.error(f"Error in chat: {e}", exc_info=True)
             raise
     
     def reset(self):

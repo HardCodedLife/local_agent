@@ -3,6 +3,11 @@
 import importlib
 import logging
 from typing import Dict, List, Callable, Any
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables FIRST
+load_dotenv(Path(__file__).parent.parent.parent/'.env')
 
 logger = logging.getLogger(__name__)
 
